@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>食帳 FOOD LEDGER</title>
+<meta name="description" content="健身營養控制 App — 熱量與三大營養素記錄、AI 拍照估算">
+<meta name="theme-color" content="#161616">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="食帳">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#161616; --paper:#FAF7EF; --card:#FFFFFF;
+  --green:#4F7A5B; --orange:#E8863C; --rust:#C97A4A; --slate:#6E7B8B;
+  --line:#D6D1C4; --mut:#9C968A; --err:#C0392B;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--ink);
+  display:flex;flex-direction:column;max-width:520px;margin:0 auto;
+  min-height:100dvh;
+}
+.mono{font-family:'IBM Plex Mono',monospace}
+.big{font-family:'Archivo Black',sans-serif;letter-spacing:-0.01em}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;font-weight:600;color:var(--mut)}
+
+/* ---- header ---- */
+header{
+  background:var(--ink);color:var(--paper);
+  padding:calc(14px + env(safe-area-inset-top)) 20px 14px;
+  display:flex;justify-content:space-between;align-items:flex-end;flex-shrink:0;
+}
+header .t{font-size:22px;font-weight:900}
+header .r{text-align:right}
+header .r .big{font-size:24px;line-height:1}
+
+/* ---- body ---- */
+main{flex:1;overflow-y:auto;padding:18px 18px 96px;-webkit-overflow-scrolling:touch}
+main::-webkit-scrollbar{display:none}
+
+/* ---- bottom nav ---- */
+nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:520px;display:grid;grid-template-columns:repeat(4,1fr);
+  background:var(--paper);border-top:3px solid var(--ink);
+  padding-bottom:env(safe-area-inset-bottom);z-index:40;
+}
+nav button{
+  background:none;border:none;border-right:1px solid var(--ink);
+  padding:10px 0 8px;font-family:inherit;font-size:10px;font-weight:700;color:#8a8578;
+  display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;
+}
+nav button:last-child{border-right:none}
+nav button.on{background:var(--ink);color:var(--paper)}
+nav svg{width:19px;height:19px}
+
+/* ---- cards / common ---- */
+.card{background:var(--card);border:3px solid var(--ink);padding:14px;margin-bottom:16px}
+.card.thin{border-width:1px;border-color:var(--line)}
+.h-title{font-size:15px;font-weight:900;margin-bottom:2px}
+.rule{height:6px;background:var(--ink);margin:8px 0 4px}
+.bar{height:6px;background:#E7E3D8;overflow:hidden;margin-top:5px}
+.bar>i{display:block;height:100%;transition:width .4s ease}
+button.btn{
+  font-family:inherit;border:none;cursor:pointer;font-weight:700;font-size:13px;
+  padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+}
+.btn.dark{background:var(--ink);color:var(--paper)}
+.btn.green{background:var(--green);color:#fff}
+.btn.ghost{background:none;border:2px dashed var(--mut);color:#6b665b}
+.btn.line{background:none;border:2px solid var(--ink);color:var(--ink)}
+input,select{
+  font-family:inherit;font-size:14px;width:100%;padding:9px 10px;
+  border:1px solid #b9b3a4;background:#fff;color:var(--ink);border-radius:0;
+}
+input:focus,select:focus{outline:none;border-color:var(--ink)}
+label.f{display:block}
+label.f span{display:block;font-size:10px;font-weight:700;color:#7d7869;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.row{display:flex;align-items:center;justify-content:space-between}
+.chip-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.chip-row::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:5px 12px;font-size:12px;font-weight:600;border:1px solid var(--line);background:#fff;color:#6b665b;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--green);border-color:var(--green);color:#fff}
+.mealbtn{padding:9px 0;font-size:12px;font-weight:700;border:2px solid var(--ink);background:#fff;color:#4a463c;cursor:pointer;font-family:inherit}
+.mealbtn.on{background:var(--ink);color:var(--paper)}
+.food{
+  width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;
+  background:#fff;border:1px solid var(--line);padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:inherit;
+}
+.food:active{background:#f1ede2}
+.food .n{font-size:13px;font-weight:600}
+.food .m{font-size:10px;color:var(--mut)}
+.entry{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px dashed #e2ddd0}
+.entry:last-child{border-bottom:none}
+.del{background:none;border:none;color:#cfc9ba;cursor:pointer;padding:4px}
+.del:active{color:var(--err)}
+.toast{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;
+  background:var(--ink);color:var(--paper);font-size:12px;font-weight:600;
+  padding:9px 16px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap;
+}
+.err{font-size:11px;color:var(--err);font-weight:700;margin-top:6px}
+.note{font-size:10.5px;color:var(--mut);line-height:1.6;margin-top:8px}
+.spin{animation:sp 1s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hide{display:none!important}
+.wchart{display:flex;align-items:flex-end;gap:8px;height:120px;margin:10px 0 6px}
+.wchart .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.wchart .col b{font-size:9px;color:#7d7869;font-weight:500;font-family:'IBM Plex Mono',monospace;margin-bottom:3px}
+.wchart .col i{display:block;width:100%;background:var(--green);transition:height .4s ease}
+.wchart .col u{font-size:9px;color:var(--mut);text-decoration:none;margin-top:3px}
+.mealhead{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:#F1EEE4;border-bottom:1px solid var(--line);font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <div>
+    <div class="t">食帳</div>
+    <div class="eyebrow" style="color:#8a8578" id="hdrDate">FOOD LEDGER</div>
+  </div>
+  <div class="r">
+    <div class="eyebrow" style="color:#8a8578">剩餘熱量 REMAINING</div>
+    <div class="big" id="hdrRemain">–</div>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<nav id="nav">
+  <button data-tab="overview" class="on">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>總覽
+  </button>
+  <button data-tab="add">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>記錄
+  </button>
+  <button data-tab="trends">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>趨勢
+  </button>
+  <button data-tab="goals">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>目標
+  </button>
+</nav>
+
+<script>
+/* =============== 常數與資料 =============== */
+const MEALS=[["早餐","BREAKFAST"],["午餐","LUNCH"],["晚餐","DINNER"],["點心","SNACK"]];
+const FOOD_DB=[
+ {cat:"主食",name:"白飯（1碗）",kcal:280,p:5,c:62,f:.5},
+ {cat:"主食",name:"五穀飯（1碗）",kcal:260,p:7,c:54,f:2},
+ {cat:"主食",name:"地瓜（150g）",kcal:129,p:2.4,c:30,f:.2},
+ {cat:"主食",name:"御飯糰（1個）",kcal:180,p:4,c:38,f:1.5},
+ {cat:"蛋白質",name:"雞胸肉（100g）",kcal:165,p:31,c:0,f:3.6},
+ {cat:"蛋白質",name:"雞腿肉（100g）",kcal:209,p:26,c:0,f:10.9},
+ {cat:"蛋白質",name:"滷蛋（1顆）",kcal:78,p:6.5,c:.6,f:5.3},
+ {cat:"蛋白質",name:"荷包蛋（1顆）",kcal:92,p:6.5,c:.4,f:7},
+ {cat:"蛋白質",name:"高蛋白飲（1份）",kcal:120,p:24,c:3,f:1.5},
+ {cat:"蔬果",name:"花椰菜（100g）",kcal:34,p:2.8,c:7,f:.4},
+ {cat:"蔬果",name:"香蕉（1根）",kcal:105,p:1.3,c:27,f:.4},
+ {cat:"蔬果",name:"蘋果（1顆）",kcal:95,p:.5,c:25,f:.3},
+ {cat:"飲品",name:"無糖豆漿（300ml）",kcal:105,p:9,c:6,f:4.5},
+ {cat:"飲品",name:"拿鐵（中杯）",kcal:150,p:8,c:12,f:8},
+ {cat:"複合餐點",name:"沙拉雞胸便當",kcal:420,p:40,c:35,f:12},
+ {cat:"複合餐點",name:"排骨便當",kcal:850,p:35,c:90,f:35},
+ {cat:"複合餐點",name:"滷肉飯",kcal:550,p:18,c:75,f:20},
+ {cat:"複合餐點",name:"牛肉麵",kcal:650,p:32,c:75,f:22},
+];
+const CATS=["全部",...new Set(FOOD_DB.map(f=>f.cat))];
+const ACTIVITY=[[1.2,"久坐 / 幾乎不運動"],[1.375,"輕度活動（每週 1–3 天）"],[1.55,"中度活動（每週 3–5 天）"],[1.725,"高度活動（每週 6–7 天）"],[1.9,"極高強度（勞力工作 / 每日訓練）"]];
+
+/* =============== 狀態（localStorage 持久化） =============== */
+const todayStr=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const LS={
+  get(k,fb){try{const v=localStorage.getItem("fl:"+k);return v?JSON.parse(v):fb}catch{return fb}},
+  set(k,v){try{localStorage.setItem("fl:"+k,JSON.stringify(v))}catch{}}
+};
+const S={
+  date:todayStr(),
+  tab:"overview",
+  profile:LS.get("profile",{gender:"male",age:35,height:172,weight:72,activity:1.375}),
+  targets:LS.get("targets",{kcal:2000,p:120,c:220,f:60}),
+  foodLog:LS.get("foodlog:"+todayStr(),[]),
+  water:LS.get("water:"+todayStr(),0),
+  weightLog:LS.get("weightlog",[]),
+  apiKey:LS.get("apikey",""),
+  addMeal:"早餐", addCat:"全部",
+  manualOpen:false, manual:{name:"",kcal:"",p:"",c:"",f:""}, manualErr:"",
+  aiBusy:false, aiResults:null, aiErr:"",
+};
+const round1=n=>Math.round(n*10)/10;
+const totals=()=>S.foodLog.reduce((a,f)=>({kcal:a.kcal+f.kcal,p:a.p+f.p,c:a.c+f.c,f:a.f+f.f}),{kcal:0,p:0,c:0,f:0});
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+/* =============== 動作 =============== */
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",1700)}
+function saveLog(){LS.set("foodlog:"+S.date,S.foodLog)}
+function addFood(item,meal){
+  S.foodLog.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),meal,
+    name:item.name,kcal:Math.round(item.kcal),p:round1(item.p),c:round1(item.c),f:round1(item.f),
+    time:new Date().toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"})});
+  saveLog();toast("已記錄　"+item.name);render();
+}
+function removeFood(id){S.foodLog=S.foodLog.filter(f=>f.id!==id);saveLog();render()}
+function addWater(d){S.water=Math.max(0,S.water+d);LS.set("water:"+S.date,S.water);render()}
+function submitManual(){
+  const m=S.manual,k=Number(m.kcal);
+  if(!m.name.trim()){S.manualErr="請填寫品名";return render()}
+  if(!(k>0)){S.manualErr="請填寫有效的熱量（大於 0）";return render()}
+  S.manualErr="";
+  addFood({name:m.name.trim(),kcal:k,p:Number(m.p)||0,c:Number(m.c)||0,f:Number(m.f)||0},S.addMeal);
+  S.manual={name:"",kcal:"",p:"",c:"",f:""};S.manualOpen=false;render();
+}
+function submitWeight(v){
+  const val=Number(v);if(!(val>0))return;
+  S.weightLog=S.weightLog.filter(w=>w.date!==S.date);
+  S.weightLog.push({date:S.date,weight:val});
+  S.weightLog.sort((a,b)=>a.date.localeCompare(b.date));
+  LS.set("weightlog",S.weightLog);
+  S.profile.weight=val;LS.set("profile",S.profile);
+  toast("已更新體重紀錄");render();
+}
+function calcTargets(){
+  const{gender,age,height,weight,activity}=S.profile;
+  const bmr=gender==="male"?10*weight+6.25*height-5*age+5:10*weight+6.25*height-5*age-161;
+  const tdee=Math.round(bmr*activity);
+  const kcal=Math.round(tdee*0.85/10)*10;
+  const p=Math.round(weight*1.8/5)*5;
+  const f=Math.round(kcal*0.28/9/5)*5;
+  const c=Math.max(0,Math.round((kcal-p*4-f*9)/4/5)*5);
+  S.targets={kcal,p,c,f};LS.set("targets",S.targets);
+  toast("已依身體數據更新目標");render();
+}
+
+/* =============== AI 拍照估算 =============== */
+async function analyzePhoto(file){
+  if(!file)return;
+  if(!S.apiKey){S.aiErr="請先到「目標」分頁設定 Anthropic API Key（設定一次即可）";return render()}
+  S.aiBusy=true;S.aiErr="";S.aiResults=null;render();
+  try{
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej();r.readAsDataURL(file)});
+    const mediaType=file.type&&file.type.startsWith("image/")?file.type:"image/jpeg";
+    const resp=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-api-key":S.apiKey,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6",max_tokens:1000,
+        messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
+          {type:"text",text:'你是台灣營養師。辨識照片中的食物（台灣常見餐點請用台灣慣用名稱），估算每一項的份量、熱量與三大營養素。只回傳 JSON 陣列，不要任何其他文字或 Markdown。格式：[{"name":"品名（含份量）","kcal":整數,"p":蛋白質克數,"c":碳水克數,"f":脂肪克數}]。若照片中沒有食物，回傳 []。'}
+        ]}]
+      })
+    });
+    if(!resp.ok){
+      const errBody=await resp.json().catch(()=>({}));
+      throw new Error(errBody?.error?.message||("HTTP "+resp.status));
+    }
+    const data=await resp.json();
+    const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+    const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+    if(!Array.isArray(parsed)||parsed.length===0){S.aiErr="照片中未辨識到食物，請換一張更清楚的餐點照片"}
+    else{S.aiResults=parsed.map(it=>({name:String(it.name||"未命名"),kcal:Math.round(Number(it.kcal)||0),p:round1(Number(it.p)||0),c:round1(Number(it.c)||0),f:round1(Number(it.f)||0)}))}
+  }catch(e){
+    console.error(e);
+    S.aiErr="分析失敗："+(e.message||"請檢查 API Key 或網路後重試");
+  }finally{S.aiBusy=false;render()}
+}
+function addAiItem(idx){
+  const it=S.aiResults[idx];addFood(it,S.addMeal);
+  S.aiResults.splice(idx,1);if(!S.aiResults.length)S.aiResults=null;render();
+}
+function addAllAi(){
+  if(!S.aiResults)return;
+  const n=S.aiResults.length;
+  S.aiResults.forEach(it=>{
+    S.foodLog.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),meal:S.addMeal,
+      name:it.name,kcal:it.kcal,p:it.p,c:it.c,f:it.f,
+      time:new Date().toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"})});
+  });
+  saveLog();S.aiResults=null;toast(`已加入 ${n} 筆至「${S.addMeal}」`);render();
+}
+
+/* =============== Render =============== */
+const $=sel=>document.querySelector(sel);
+function macroRow(label,eb,val,tgt,unit,color){
+  const pct=tgt>0?Math.min(100,Math.round(val/tgt*100)):0;
+  return `<div style="padding:9px 0;border-bottom:1px solid #e7e3d8">
+    <div class="row"><div><b style="font-size:14px">${label}</b> <span class="eyebrow" style="font-size:9px">${eb}</span></div>
+    <div class="mono" style="font-size:13px">${val}<span style="color:var(--mut)">${unit} / ${tgt}${unit}</span></div></div>
+    <div class="bar"><i style="width:${pct}%;background:${color}"></i></div></div>`;
+}
+function renderHeader(){
+  $("#hdrDate").textContent="FOOD LEDGER · "+S.date;
+  const rem=S.targets.kcal-totals().kcal;
+  $("#hdrRemain").textContent=rem>=0?rem:0;
+}
+function viewOverview(){
+  const t=totals(),pct=Math.min(100,Math.round(t.kcal/S.targets.kcal*100));
+  const receipt=S.foodLog.length===0
+    ?`<div style="border:2px dashed var(--line);padding:26px 10px;text-align:center">
+        <div style="font-size:13px;color:#7d7869;font-weight:500">今天還沒有紀錄</div>
+        <div style="font-size:11px;color:var(--mut);margin-top:4px">點下方「記錄」開始新增第一筆飲食</div></div>`
+    :MEALS.map(([k])=>{
+      const items=S.foodLog.filter(f=>f.meal===k);if(!items.length)return"";
+      const sub=items.reduce((s,i)=>s+i.kcal,0);
+      return `<div class="card thin" style="padding:0;margin-bottom:10px">
+        <div class="mealhead"><span>${k}</span><span class="mono" style="font-weight:500;color:#7d7869;font-size:11px">${sub} kcal</span></div>
+        ${items.map(it=>`<div class="entry">
+          <div><div style="font-size:13px">${esc(it.name)}</div>
+          <div class="mono" style="font-size:10px;color:var(--mut)">${it.time} · P${it.p} C${it.c} F${it.f}</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="mono" style="font-size:13px;font-weight:600">${it.kcal}</span>
+            <button class="del" onclick="removeFood('${it.id}')">✕</button></div></div>`).join("")}
+      </div>`}).join("");
+  return `
+  <div class="card">
+    <div class="eyebrow">DAILY NUTRITION FACTS</div>
+    <div class="h-title">每日營養標示</div>
+    <div class="rule"></div>
+    <div class="row" style="padding:8px 0;border-bottom:6px solid var(--ink)">
+      <div><b style="font-size:13px">熱量</b><div class="eyebrow">CALORIES</div></div>
+      <div style="text-align:right"><span class="big" style="font-size:34px">${t.kcal}</span>
+      <div class="mono" style="font-size:11px;color:var(--mut)">目標 ${S.targets.kcal} kcal</div></div>
+    </div>
+    <div class="bar" style="height:7px;margin:8px 0"><i style="width:${pct}%;background:var(--orange)"></i></div>
+    ${macroRow("蛋白質","PROTEIN",round1(t.p),S.targets.p,"g","var(--green)")}
+    ${macroRow("碳水化合物","CARBS",round1(t.c),S.targets.c,"g","var(--slate)")}
+    ${macroRow("脂肪","FAT",round1(t.f),S.targets.f,"g","var(--rust)")}
+    <div class="row" style="margin-top:10px">
+      <span class="eyebrow">* 依每日目標值估算</span>
+      <button class="btn dark" style="width:auto;padding:7px 14px;font-size:12px" onclick="S.tab='add';render()">＋ 新增紀錄</button>
+    </div>
+  </div>
+  <div class="card row" style="border-width:3px">
+    <div><b style="font-size:13px">💧 飲水量</b><div class="eyebrow">WATER · ${S.water} / 8 CUPS</div></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn line" style="width:32px;height:32px;padding:0" onclick="addWater(-1)">−</button>
+      <span class="mono" style="font-size:15px;font-weight:600;width:22px;text-align:center">${S.water}</span>
+      <button class="btn dark" style="width:32px;height:32px;padding:0" onclick="addWater(1)">＋</button>
+    </div>
+  </div>
+  <div class="row" style="margin-bottom:8px"><span class="eyebrow">TODAY'S ENTRIES</span><span style="font-size:11px;color:var(--mut)">${S.foodLog.length} 筆</span></div>
+  ${receipt}`;
+}
+function viewAdd(){
+  const filtered=S.addCat==="全部"?FOOD_DB:FOOD_DB.filter(f=>f.cat===S.addCat);
+  const t=totals();
+  const todayList=S.foodLog.length===0
+    ?`<div style="padding:12px;text-align:center;font-size:12px;color:var(--mut)">尚未新增任何項目 — 點下方食物、拍照或手動輸入開始記錄</div>`
+    :`<div style="max-height:150px;overflow-y:auto">${[...S.foodLog].reverse().map(it=>`
+      <div class="entry"><div><span style="font-size:10px;font-weight:700;color:var(--green);margin-right:6px">${it.meal}</span>
+      <span style="font-size:13px">${esc(it.name)}</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="mono" style="font-size:12px;font-weight:600">${it.kcal} kcal</span>
+        <button class="del" onclick="removeFood('${it.id}')">✕</button></div></div>`).join("")}</div>`;
+  const ai = S.aiBusy
+    ? `<div style="padding:14px;text-align:center;font-size:13px;color:#7d7869;border:2px dashed var(--line)"><span class="spin">⏳</span> AI 分析中，約需數秒⋯</div>`
+    : S.aiResults
+    ? `<div class="card thin" style="padding:0;margin:0 0 10px">
+        ${S.aiResults.map((it,i)=>`<div class="entry">
+          <div><div style="font-size:13px;font-weight:600">${esc(it.name)}</div>
+          <div class="mono" style="font-size:10px;color:var(--mut)">${it.kcal} kcal · P${it.p} C${it.c} F${it.f}</div></div>
+          <button class="btn dark" style="width:auto;padding:5px 12px;font-size:11px" onclick="addAiItem(${i})">加入</button></div>`).join("")}
+       </div>
+       <div style="display:flex;gap:8px">
+        <button class="btn green" style="flex:1" onclick="addAllAi()">全部加入「${S.addMeal}」</button>
+        <button class="btn line" style="width:auto" onclick="S.aiResults=null;render()">清除</button>
+       </div>`
+    : `<label class="btn green" style="cursor:pointer">
+        📷 拍照 / 選擇餐點照片
+        <input type="file" accept="image/*" capture="environment" style="display:none"
+          onchange="if(this.files[0])analyzePhoto(this.files[0]);this.value=''">
+       </label>
+       ${S.apiKey?"":`<div class="note">⚠ 尚未設定 API Key — 請先到「目標」分頁底部貼上你的 Anthropic API Key（僅存於本機）</div>`}`;
+  return `
+  <div style="margin-bottom:14px">
+    <div class="eyebrow" style="margin-bottom:6px">MEAL · 選擇餐別</div>
+    <div class="grid4">${MEALS.map(([k])=>`<button class="mealbtn ${S.addMeal===k?"on":""}" onclick="S.addMeal='${k}';render()">${k}</button>`).join("")}</div>
+  </div>
+  <div class="card thin" style="padding:0;margin-bottom:14px">
+    <div class="mealhead" style="background:var(--ink);color:var(--paper)">
+      <span>今日已新增 TODAY</span><span class="mono" style="font-weight:500;font-size:11px">${S.foodLog.length} 筆 · ${t.kcal} kcal</span></div>
+    ${todayList}
+  </div>
+  <div class="card">
+    <div class="row" style="margin-bottom:4px">
+      <div><div class="eyebrow">AI PHOTO SCAN</div><div class="h-title" style="margin:0">拍照估算熱量</div></div><span style="font-size:20px">📷</span>
+    </div>
+    <div class="note" style="margin:0 0 10px">拍下餐點或選擇照片，AI 自動辨識品項並估算熱量與三大營養素（結果為估計值，可再調整）${S.aiErr?`<div class="err">⚠ ${esc(S.aiErr)}</div>`:""}</div>
+    ${ai}
+  </div>
+  <div class="eyebrow" style="margin-bottom:6px">CATEGORY · 快速選擇</div>
+  <div class="chip-row" style="margin-bottom:10px">${CATS.map(c=>`<button class="chip ${S.addCat===c?"on":""}" onclick="S.addCat='${c}';render()">${c}</button>`).join("")}</div>
+  <div>${filtered.map((it,i)=>`<button class="food" onclick='addFood(FOOD_DB[${FOOD_DB.indexOf(it)}],S.addMeal)'>
+    <div><div class="n">${it.name}</div><div class="m mono">P${it.p} C${it.c} F${it.f}</div></div>
+    <div style="display:flex;align-items:center;gap:8px"><span class="mono" style="font-size:13px;font-weight:700">${it.kcal} kcal</span><span style="color:var(--green);font-size:16px;font-weight:700">＋</span></div>
+  </button>`).join("")}</div>
+  <button class="btn ${S.manualOpen?"dark":"ghost"}" style="margin-top:4px" onclick="S.manualOpen=!S.manualOpen;render()">${S.manualOpen?"✕ 收合手動輸入":"＋ 手動輸入自訂食物"}</button>
+  ${S.manualOpen?`
+  <div class="card" style="margin-top:12px">
+    <div class="eyebrow">CUSTOM ENTRY</div>
+    <div class="h-title" style="margin-bottom:10px">手動輸入 · 加入「${S.addMeal}」</div>
+    <label class="f" style="margin-bottom:10px"><span>品名</span>
+      <input id="mName" value="${esc(S.manual.name)}" placeholder="例：雞胸沙拉"></label>
+    <div class="grid4" style="margin-bottom:10px">
+      <label class="f"><span>熱量 kcal</span><input id="mK" type="number" inputmode="decimal" value="${esc(S.manual.kcal)}"></label>
+      <label class="f"><span>蛋白 g</span><input id="mP" type="number" inputmode="decimal" value="${esc(S.manual.p)}"></label>
+      <label class="f"><span>碳水 g</span><input id="mC" type="number" inputmode="decimal" value="${esc(S.manual.c)}"></label>
+      <label class="f"><span>脂肪 g</span><input id="mF" type="number" inputmode="decimal" value="${esc(S.manual.f)}"></label>
+    </div>
+    ${S.manualErr?`<div class="err" style="margin:0 0 8px">⚠ ${S.manualErr}</div>`:""}
+    <button class="btn dark" onclick="captureManual();submitManual()">加入「${S.addMeal}」紀錄</button>
+  </div>`:""}`;
+}
+function captureManual(){
+  S.manual={name:$("#mName").value,kcal:$("#mK").value,p:$("#mP").value,c:$("#mC").value,f:$("#mF").value};
+}
+function viewTrends(){
+  const recent=S.weightLog.slice(-8),t=totals();
+  const minW=recent.length?Math.min(...recent.map(w=>w.weight))-1:0;
+  const maxW=recent.length?Math.max(...recent.map(w=>w.weight))+1:1;
+  const range=Math.max(1,maxW-minW);
+  const chg=recent.length>1?round1(recent.at(-1).weight-recent[0].weight):null;
+  const ratio=(l,eb,v,tg,c)=>{const p=tg>0?Math.min(100,Math.round(v/tg*100)):0;
+    return `<div style="padding:8px 0;border-bottom:1px solid #e7e3d8">
+    <div class="row" style="margin-bottom:4px"><span style="font-size:12px;font-weight:600">${l} <span class="eyebrow" style="font-size:9px">${eb}</span></span>
+    <span class="mono" style="font-size:11px;color:#7d7869">${p}%</span></div>
+    <div class="bar"><i style="width:${p}%;background:${c}"></i></div></div>`};
+  return `
+  <div class="card">
+    <div class="eyebrow">WEIGHT TREND</div><div class="h-title" style="margin-bottom:8px">體重趨勢</div>
+    ${recent.length===0?`<div style="font-size:12px;color:var(--mut);text-align:center;padding:20px 0">尚無體重紀錄，於下方輸入今日體重開始追蹤</div>`
+    :`<div class="wchart">${recent.map(w=>{const h=((w.weight-minW)/range)*90+10;const[,m,d]=w.date.split("-");
+      return `<div class="col"><b>${w.weight}</b><i style="height:${h}%"></i><u>${+m}/${+d}</u></div>`}).join("")}</div>`}
+    ${chg!=null?`<div class="row" style="border-top:1px solid #e7e3d8;padding-top:8px">
+      <span class="eyebrow">CHANGE（近 ${recent.length} 筆）</span>
+      <span class="mono" style="font-size:13px;font-weight:700;color:${chg<=0?"var(--green)":"var(--rust)"}">${chg>0?"+":""}${chg} kg</span></div>`:""}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <input id="wIn" type="number" inputmode="decimal" placeholder="輸入今日體重 kg" style="flex:1">
+      <button class="btn dark" style="width:auto;padding:9px 18px" onclick="submitWeight($('#wIn').value)">記錄</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="eyebrow">TODAY VS TARGET</div><div class="h-title" style="margin-bottom:6px">今日達成率</div>
+    ${ratio("熱量","CAL",t.kcal,S.targets.kcal,"var(--orange)")}
+    ${ratio("蛋白質","PRO",t.p,S.targets.p,"var(--green)")}
+    ${ratio("碳水","CAR",t.c,S.targets.c,"var(--slate)")}
+    ${ratio("脂肪","FAT",t.f,S.targets.f,"var(--rust)")}
+  </div>
+  <div class="note">數據僅儲存於你手機的瀏覽器本機空間，不會上傳到任何伺服器。本 App 為記錄輔助工具，並非醫療或營養診斷建議，請視個人健康狀況調整目標。</div>`;
+}
+function viewGoals(){
+  const p=S.profile,t=S.targets;
+  return `
+  <div class="card">
+    <div class="eyebrow">BODY PROFILE</div><div class="h-title" style="margin-bottom:10px">身體數據</div>
+    <div class="grid2" style="margin-bottom:10px">
+      <label class="f"><span>性別</span><select onchange="S.profile.gender=this.value;LS.set('profile',S.profile)">
+        <option value="male" ${p.gender==="male"?"selected":""}>男性</option>
+        <option value="female" ${p.gender==="female"?"selected":""}>女性</option></select></label>
+      <label class="f"><span>年齡</span><input type="number" inputmode="numeric" value="${p.age}" onchange="S.profile.age=+this.value||0;LS.set('profile',S.profile)"></label>
+      <label class="f"><span>身高 cm</span><input type="number" inputmode="decimal" value="${p.height}" onchange="S.profile.height=+this.value||0;LS.set('profile',S.profile)"></label>
+      <label class="f"><span>體重 kg</span><input type="number" inputmode="decimal" value="${p.weight}" onchange="S.profile.weight=+this.value||0;LS.set('profile',S.profile)"></label>
+    </div>
+    <label class="f" style="margin-bottom:12px"><span>活動量</span>
+      <select onchange="S.profile.activity=+this.value;LS.set('profile',S.profile)">
+      ${ACTIVITY.map(([k,l])=>`<option value="${k}" ${p.activity==k?"selected":""}>${l}</option>`).join("")}</select></label>
+    <button class="btn green" onclick="calcTargets()">🔥 依身體數據試算目標（TDEE −15%）</button>
+    <div class="note">採 Mifflin-St Jeor 公式估算基礎代謝率（BMR），乘上活動係數得每日總消耗（TDEE），再抓 15% 熱量赤字作為預設減脂目標；蛋白質預設每公斤體重 1.8g，適合有重訓習慣者。</div>
+  </div>
+  <div class="card">
+    <div class="eyebrow">DAILY TARGETS</div><div class="h-title" style="margin-bottom:10px">每日目標（可手動微調）</div>
+    <div class="grid2">
+      <label class="f"><span>熱量 kcal</span><input type="number" inputmode="numeric" value="${t.kcal}" onchange="S.targets.kcal=Math.max(0,+this.value||0);LS.set('targets',S.targets);renderHeader()"></label>
+      <label class="f"><span>蛋白質 g</span><input type="number" inputmode="numeric" value="${t.p}" onchange="S.targets.p=Math.max(0,+this.value||0);LS.set('targets',S.targets)"></label>
+      <label class="f"><span>碳水 g</span><input type="number" inputmode="numeric" value="${t.c}" onchange="S.targets.c=Math.max(0,+this.value||0);LS.set('targets',S.targets)"></label>
+      <label class="f"><span>脂肪 g</span><input type="number" inputmode="numeric" value="${t.f}" onchange="S.targets.f=Math.max(0,+this.value||0);LS.set('targets',S.targets)"></label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="eyebrow">AI SETTINGS</div><div class="h-title" style="margin-bottom:10px">AI 拍照估算設定</div>
+    <label class="f" style="margin-bottom:8px"><span>Anthropic API Key（僅存於手機本機，不會上傳）</span>
+      <input type="password" placeholder="sk-ant-..." value="${esc(S.apiKey)}" onchange="S.apiKey=this.value.trim();LS.set('apikey',S.apiKey);toast(S.apiKey?'已儲存 API Key':'已清除 API Key')"></label>
+    <div class="note">前往 console.anthropic.com → API Keys 建立金鑰後貼上即可啟用拍照估算。使用量依 Anthropic 官方計費（單張照片分析成本極低）。</div>
+  </div>`;
+}
+function render(){
+  renderHeader();
+  const views={overview:viewOverview,add:viewAdd,trends:viewTrends,goals:viewGoals};
+  $("#main").innerHTML=views[S.tab]();
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===S.tab));
+  $("#main").scrollTop=0;
+}
+document.getElementById("nav").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;S.tab=b.dataset.tab;render();
+});
+/* 手動輸入欄位即時保存（避免 re-render 清空） */
+document.getElementById("main").addEventListener("input",e=>{
+  if(e.target.id==="mName")S.manual.name=e.target.value;
+  if(e.target.id==="mK")S.manual.kcal=e.target.value;
+  if(e.target.id==="mP")S.manual.p=e.target.value;
+  if(e.target.id==="mC")S.manual.c=e.target.value;
+  if(e.target.id==="mF")S.manual.f=e.target.value;
+});
+render();
+
+/* =============== PWA Service Worker =============== */
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body>
+</html>
