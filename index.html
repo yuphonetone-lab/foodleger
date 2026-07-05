@@ -380,11 +380,18 @@ function viewAdd(){
         <button class="btn green" style="flex:1" onclick="addAllAi()">全部加入「${S.addMeal}」</button>
         <button class="btn line" style="width:auto" onclick="S.aiResults=null;render()">清除</button>
        </div>`
-    : `<label class="btn green" style="cursor:pointer">
-        📷 拍照 / 選擇餐點照片
-        <input type="file" accept="image/*" capture="environment" style="display:none"
-          onchange="if(this.files[0])analyzePhoto(this.files[0]);this.value=''">
-       </label>
+    : `<div style="display:flex;gap:8px">
+        <label class="btn green" style="cursor:pointer;flex:1">
+          📷 拍照
+          <input type="file" accept="image/*" capture="environment" style="display:none"
+            onchange="if(this.files[0])analyzePhoto(this.files[0]);this.value=''">
+        </label>
+        <label class="btn line" style="cursor:pointer;flex:1">
+          🖼 從相簿選擇
+          <input type="file" accept="image/*" style="display:none"
+            onchange="if(this.files[0])analyzePhoto(this.files[0]);this.value=''">
+        </label>
+       </div>
        ${S.apiKey?"":`<div class="note">⚠ 尚未設定 API Key — 請先到「目標」分頁底部貼上你的 Anthropic API Key（僅存於本機）</div>`}`;
   return `
   <div style="margin-bottom:14px">
